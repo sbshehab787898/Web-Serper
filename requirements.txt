@@ -5,3 +5,4 @@ beautifulsoup4
 ddgs
 python-multipart
 jinja2
+googlesearch-python

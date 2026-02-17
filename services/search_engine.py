@@ -5,51 +5,64 @@ import traceback
 import random
 import time
 
+import random
+import time
+from googlesearch import search as google_search
+
 def search_web(query: str, max_results: int = 10, engine: str = "google") -> List[Dict]:
     """
-    Smart search that simulates Google/Yahoo/Bing results via DuckDuckGo backend.
+    Intelligent search that combines results from Google and DuckDuckGo (aggregator).
     
     Args:
         query (str): The search term.
         max_results (int): Number of results to return.
-        engine (str): 'google', 'yahoo', 'bing', or 'duckduckgo'. 
-                      Note: DDG is the underlying provider but we can tweak headers/regions if needed 
-                      or just treat them all as high-quality web searches.
+        engine (str): 'google', 'yahoo', 'bing', 'duckduckgo', or 'all'.
     """
     print(f"Searching for '{query}' using engine: {engine}")
     
-    # We can add more engines here later (e.g. scraping other providers), 
-    # but for now we stick to DDG as it's the most reliable free 'Google-like' result provider.
-    # To make it 'smarter', we can try to fetch more results and filter them.
-    
-    try:
-        with DDGS() as ddgs:
-            # Fetch a bit more to filter
-            raw_results = list(ddgs.text(query, max_results=max_results + 5))
-            
-        # Basic finding: DDG results are already quite good. 
-        # We can simulate 'Yahoo' or others by just returning the same high-quality links 
-        # or potentially re-ordering them if we had specific criteria.
-        
-        # Deduplicate results based on URL
-        seen_urls = set()
-        clean_results = []
-        for r in raw_results:
-            if r['href'] not in seen_urls:
-                seen_urls.add(r['href'])
-                clean_results.append({
-                    "title": r['title'],
-                    "link": r['href'],
-                    "snippet": r['body'],
-                    "source": "Web"
-                })
-        
-        return clean_results[:max_results]
+    combined_results = []
+    seen_urls = set()
 
-    except Exception as e:
-        print(f"Error searching web: {e}")
-        traceback.print_exc()
-        return []
+    # 1. Google Search (Top Priority)
+    if engine in ["google", "all"]:
+        print("Fetching from Google...")
+        try:
+            # Fetch slightly more to account for duplicates/promoted content
+            g_results = google_search(query, num_results=max_results + 2, advanced=True)
+            for r in g_results:
+                if r.url not in seen_urls:
+                    seen_urls.add(r.url)
+                    combined_results.append({
+                        "title": r.title,
+                        "link": r.url,
+                        "snippet": r.description,
+                        "source": "Google"
+                    })
+        except Exception as e:
+            print(f"Google search error: {e}")
+
+    # 2. DuckDuckGo Search (Fallback & Diversity)
+    # DDG is great for privacy and covers Bing/Yahoo index
+    if engine in ["duckduckgo", "bing", "yahoo", "all"] or (engine == "google" and not combined_results):
+        print("Fetching from DuckDuckGo...")
+        try:
+            with DDGS() as ddgs:
+                ddg_results = list(ddgs.text(query, max_results=max_results + 5))
+                for r in ddg_results:
+                    if r['href'] not in seen_urls:
+                        seen_urls.add(r['href'])
+                        combined_results.append({
+                            "title": r['title'],
+                            "link": r['href'],
+                            "snippet": r['body'],
+                            "source": "DuckDuckGo"
+                        })
+        except Exception as e:
+            print(f"DuckDuckGo search error: {e}")
+
+    # 3. Intelligent Ranking & Filtering
+    # If we have results from both, Google is already first (prioritized).
+    return combined_results[:max_results]
 
 def search_images(query: str, max_results: int = 10) -> List[Dict]:
     """Search for images."""
