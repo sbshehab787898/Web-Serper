@@ -40,7 +40,7 @@ async def search(request: SearchRequest):
     Search for web results.
     """
     try:
-        results = await run_in_threadpool(search_engine.search_web, request.query, request.limit)
+        results = await run_in_threadpool(search_engine.search_web, request.query, request.limit, request.engine)
         return {"query": request.query, "results": results}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
