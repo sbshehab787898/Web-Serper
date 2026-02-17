@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+venv/
+.vscode/
+.idea/
+test_output.txt
+test_api.py
+test_ddgs.py
+debug_imports.py
